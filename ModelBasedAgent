@@ -1,0 +1,93 @@
+class ModelBasedAgent:
+    """Model-Based Agent with internal memory of visited cells."""
+
+    def __init__(self):
+        # Internal memory
+        self.visited_cells = set()
+
+        # Estimated current position
+        self.x = 0
+        self.y = 0
+
+        # Remember previous action
+        self.last_action = None
+
+    def sense_and_act(self, percept):
+
+        # -------------------------------------------------
+        # 1. Update internal state using previous action
+        # -------------------------------------------------
+        if self.last_action == 'Up':
+            self.y += 1
+        elif self.last_action == 'Down':
+            self.y -= 1
+        elif self.last_action == 'Left':
+            self.x -= 1
+        elif self.last_action == 'Right':
+            self.x += 1
+
+        # -------------------------------------------------
+        # 2. Record current cell in memory
+        # -------------------------------------------------
+        current_cell = (self.x, self.y)
+        self.visited_cells.add(current_cell)
+
+        # -------------------------------------------------
+        # 3. Condition-Action rules
+        # -------------------------------------------------
+
+        # IF food is here THEN collect it
+        if percept['food_here']:
+            action = 'Suck'
+
+        # IF wall is ahead THEN change direction
+        elif percept['wall_ahead']:
+            action = self.choose_unvisited_direction()
+
+        # IF the current path is becoming repetitive
+        # THEN choose another direction
+        elif self.next_cell('Up') in self.visited_cells:
+            action = self.choose_unvisited_direction()
+
+        # ELSE move forward
+        else:
+            action = 'Up'
+
+        # -------------------------------------------------
+        # 4. Remember the action
+        # -------------------------------------------------
+        self.last_action = action
+
+        return action
+
+    def next_cell(self, action):
+        """Return the cell reached by an action."""
+
+        if action == 'Up':
+            return (self.x, self.y + 1)
+
+        elif action == 'Down':
+            return (self.x, self.y - 1)
+
+        elif action == 'Left':
+            return (self.x - 1, self.y)
+
+        elif action == 'Right':
+            return (self.x + 1, self.y)
+
+        return (self.x, self.y)
+
+    def choose_unvisited_direction(self):
+        """Choose a direction leading to a previously unvisited cell."""
+
+        directions = ['Right', 'Down', 'Left', 'Up']
+
+        for direction in directions:
+            next_position = self.next_cell(direction)
+
+            if next_position not in self.visited_cells:
+                return direction
+
+        # If every direction has already been visited,
+        # move left as a fallback.
+        return 'Left'
