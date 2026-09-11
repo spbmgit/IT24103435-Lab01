@@ -1,6 +1,8 @@
 import random
 import tkinter as tk
 
+from agent import SearchAgent
+
 
 class VisualGridHuntGame:
     """Grid environment used for the practical."""
@@ -166,7 +168,9 @@ class GridGameGUI:
             custom_walls=walls
         )
 
-        max_canvas_dim = 600
+        self.agent = SearchAgent(algorithm="AStar")
+
+        max_canvas_dim = 480
 
         self.cell_size = max(
             20,
@@ -315,9 +319,7 @@ class GridGameGUI:
 
                 percept = self.env.get_percept()
 
-                action = random.choice(
-                    ["Up", "Down", "Left", "Right"]
-                )
+                action = self.agent.sense_and_act(percept)
 
                 self.env.execute_action(action)
 

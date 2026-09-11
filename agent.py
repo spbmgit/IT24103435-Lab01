@@ -1,5 +1,6 @@
 from collections import deque
 import heapq
+import math
 
 
 class SearchAgent:
@@ -35,6 +36,16 @@ class SearchAgent:
                 neighbors.append((action, new_position))
 
         return neighbors
+
+    def manhattan_distance(self, pos, goal):
+        x1, y1 = pos
+        x2, y2 = goal
+        return abs(x1 - x2) + abs(y1 - y2)
+
+    def euclidean_distance(self, pos, goal):
+        x1, y1 = pos
+        x2, y2 = goal
+        return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
     def bfs_search(self, start, goal, percept):
         queue = deque()
@@ -136,6 +147,69 @@ class SearchAgent:
 
         return []
 
+    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan'):
+        priority_queue = []
+        reached_states = set()
+
+        width, height = grid_size
+        walls = set(walls)
+
+        def heuristic(pos):
+            if heuristic_type == 'manhattan':
+                return self.manhattan_distance(pos, goal_pos)
+            return self.euclidean_distance(pos, goal_pos)
+
+        g_start = 0
+        f_start = g_start + heuristic(start_pos)
+
+        heapq.heappush(
+            priority_queue,
+            (f_start, g_start, start_pos, [])
+        )
+
+        while priority_queue:
+            f_cost, g_cost, current_pos, path_taken = heapq.heappop(
+                priority_queue
+            )
+
+            if current_pos == goal_pos:
+                return path_taken
+
+            if current_pos in reached_states:
+                continue
+
+            reached_states.add(current_pos)
+
+            x, y = current_pos
+            moves = [
+                ("Up", (x, y + 1)),
+                ("Down", (x, y - 1)),
+                ("Left", (x - 1, y)),
+                ("Right", (x + 1, y))
+            ]
+
+            for action, neighbor in moves:
+                nx, ny = neighbor
+
+                if (
+                    0 <= nx < width
+                    and 0 <= ny < height
+                    and neighbor not in walls
+                    and neighbor not in reached_states
+                ):
+                    g_new = g_cost + 1
+                    h_new = heuristic(neighbor)
+                    f_new = g_new + h_new
+
+                    new_path = path_taken + [action]
+
+                    heapq.heappush(
+                        priority_queue,
+                        (f_new, g_new, neighbor, new_path)
+                    )
+
+        return []
+
     def find_closest_food(self, start, percept):
         food_positions = percept["all_food"]
 
@@ -195,6 +269,18 @@ class SearchAgent:
                     percept
                 )
 
+            elif self.active_algo == "AStar":
+                walls = percept["walls"]
+                grid_size = percept["grid_size"]
+
+                self.plan = self.astar_search(
+                    start,
+                    goal,
+                    walls,
+                    grid_size,
+                    heuristic_type='manhattan'
+                )
+
             else:
                 raise ValueError(
                     "Unknown search algorithm: "
@@ -205,3 +291,12 @@ class SearchAgent:
             return self.plan.pop(0)
 
         return "Stay"
+
+
+if __name__ == "__main__":
+    agent = SearchAgent()
+    start = (0, 0)
+    goal = (3, 4)
+
+    print("Manhattan distance:", agent.manhattan_distance(start, goal))
+    print("Euclidean distance:", agent.euclidean_distance(start, goal))
