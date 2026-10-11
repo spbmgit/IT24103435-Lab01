@@ -1,6 +1,7 @@
 from collections import deque
 import heapq
 import math
+from logic_engine import KnowledgeBase
 
 
 class SearchAgent:
@@ -9,6 +10,9 @@ class SearchAgent:
     def __init__(self, algorithm="BFS"):
         self.plan = []
         self.active_algo = algorithm
+        self.kb = KnowledgeBase()
+        self.kb.tell_rule(['TargetVisible', 'HasDust'], 'SafeToEngage')
+        self.kb.tell_rule(['SafeToEngage', 'BloodseekerMissing'], 'Retreat')
 
     def get_neighbors(self, position, percept):
         x, y = position
@@ -147,7 +151,9 @@ class SearchAgent:
 
         return []
 
-    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan'):
+    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan', tile_facts=None):
+        if tile_facts is None:
+            tile_facts = {}
         priority_queue = []
         reached_states = set()
 
@@ -197,6 +203,13 @@ class SearchAgent:
                     and neighbor not in walls
                     and neighbor not in reached_states
                 ):
+                    self.kb.clear_facts()
+                    for fact in tile_facts.get(neighbor, []):
+                        self.kb.tell_fact(fact)
+                    self.kb.forward_chain()
+                    if 'Retreat' in self.kb.facts:
+                        continue
+
                     g_new = g_cost + 1
                     h_new = heuristic(neighbor)
                     f_new = g_new + h_new
@@ -273,12 +286,18 @@ class SearchAgent:
                 walls = percept["walls"]
                 grid_size = percept["grid_size"]
 
+                tile_facts = {
+                    (1, 0): ['TargetVisible', 'HasDust', 'BloodseekerMissing'],
+                    (0, 1): ['TargetVisible', 'HasDust'],
+                }
+
                 self.plan = self.astar_search(
                     start,
                     goal,
                     walls,
                     grid_size,
-                    heuristic_type='manhattan'
+                    heuristic_type='manhattan',
+                    tile_facts=tile_facts
                 )
 
             else:
